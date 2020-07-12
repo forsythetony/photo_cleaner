@@ -11,6 +11,8 @@ SOURCE_DIR = None
 DESTINATION_DIR = None
 SKIP_COPY_BACK = True
 
+BASE_OUTPUT_DIR = "output"
+
 IMAGE_INFORMATION_START_INDEX = 6
 
 class ImageType(Enum):
@@ -238,6 +240,14 @@ def make_output_directory():
         First let's delete the output directory to make sure
         we're working with a clean slate
     """
+
+    if not os.path.isdir(BASE_OUTPUT_DIR):
+        os.mkdir(BASE_OUTPUT_DIR)
+    
+    global DESTINATION_DIR
+    
+    DESTINATION_DIR = os.path.join(BASE_OUTPUT_DIR, DESTINATION_DIR)
+
     if os.path.isdir(DESTINATION_DIR):
         shutil.rmtree(DESTINATION_DIR)
 
