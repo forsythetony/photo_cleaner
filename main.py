@@ -5,11 +5,15 @@ import shutil
 from shutil import copyfile
 import argparse
 import yaml
+import PIL
+from PIL import Image
+from math import floor
 
 CONFIG = None
 SOURCE_DIR = None
 DESTINATION_DIR = None
 SKIP_COPY_BACK = True
+IMAGE_RESIZE_FACTOR = .7
 
 BASE_OUTPUT_DIR = "output"
 
@@ -279,6 +283,52 @@ def get_max_width_for_image_id(image_precopy_records):
 
     return len(str(max_image_id))
 
+def get_bytes_string(total_bytes):
+
+    if total_bytes < 1e3:
+        return f"{total_bytes} bytes"
+
+    if total_bytes < 1e6:
+        kilobytes = total_bytes / 1e3
+        return f"{kilobytes:.2f} kb"
+
+    if total_bytes < 1e9:
+        megabytes = total_bytes / 1e6
+        return f"{megabytes:.2f} mb"
+
+    if total_bytes < 1e12:
+        gigabytes = total_bytes / 1e9
+        return f"{gigabytes:.2f} gb"
+
+    return f"{total_bytes} bytes"
+
+def resizeAndCopy(source, destination):
+    
+    if not os.path.exists(source):
+        raise Exception(f"An image at path {source} does not exist")
+
+    image_size = os.stat(source).st_size
+
+    print(f"Attempting to resize image at path {source}")
+    print(f"Current image size is {get_bytes_string(image_size)}")
+
+    img = Image.open(source)
+
+    image_width = img.size[0]
+    image_height = img.size[1]
+    
+    new_size = (floor(image_width * IMAGE_RESIZE_FACTOR), floor(image_height * IMAGE_RESIZE_FACTOR))
+
+    print(f"Will attempt to resize image from size {img.size} to new size {new_size}")
+
+    img = img.resize(new_size, PIL.Image.ANTIALIAS)
+
+    print(f"Resized image. Saving to {destination}")
+    img.save(destination)
+    new_image_size = os.stat(destination).st_size
+    print(f"New image size is {get_bytes_string(new_image_size)}")
+
+
 def copy_images(image_precopy_records):
     make_output_directory()
 
@@ -296,7 +346,8 @@ def copy_images(image_precopy_records):
         front_destination = build_front_destination_path(image_id, max_width)
 
         try:
-            shutil.copyfile(front_source, front_destination)
+            # shutil.copyfile(front_source, front_destination)
+            resizeAndCopy(front_source, front_destination)
         except OSError as e:
             print("Something went wrong when attempting to copy over the front of the following record -> {}".format(record))
             continue
@@ -307,11 +358,21 @@ def copy_images(image_precopy_records):
             back_destination = build_back_destination_path(image_id, max_width)
             
             try:
-                shutil.copyfile(back_source, back_destination)
+                # shutil.copyfile(back_source, back_destination)
+                resizeAndCopy(back_source, back_destination)
             except OSError as e:
                 print("Something went wrong when attempting to copy over the back of the following record -> {}".format(record))
                 continue
-            
+
+def script_base_dir():
+    return os.path.dirname(os.path.realpath(__file__))
+
+def test():
+
+    source_image_path = os.path.join(script_base_dir(), 'test', 'input', 'testImage.jpg')
+    destination_image_path = os.path.join(script_base_dir(), 'test', 'output', 'testImageResult.jpg')
+
+    resizeAndCopy(source_image_path, destination_image_path)
 
 def main():
     setup()
@@ -328,3 +389,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    # test()
